@@ -8,8 +8,8 @@
 
 **PlayStation 2 일본판 『그란디아 III』 비공식 한국어 패치**
 
-<a href="https://github.com/Jungsik-won/Grandia3-Translate/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Release-v1.0.0-7c3aed?style=for-the-badge" alt="Release v1.0.0" /></a>
-<a href="https://github.com/Jungsik-won/Grandia3-Translate/releases/download/v1.0.0/Grandia3_KR_Disc1_v1.0.0_561630a8_full.xdelta"><img src="https://img.shields.io/badge/⬇%20XDELTA%20%ED%8C%A8%EC%B9%98-2.10GB-eab308?style=for-the-badge&logo=github&logoColor=white" alt="Download xdelta patch" /></a>
+<a href="https://github.com/Jungsik-won/Grandia3-KR-Translate-Disc-1/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/Release-v1.1.0-7c3aed?style=for-the-badge" alt="Release v1.1.0" /></a>
+<a href="https://github.com/Jungsik-won/Grandia3-KR-Translate-Disc-1/releases/download/v1.1.0/Grandia3_KR_Disc1_v1.1.0_0a1ec442_full.xdelta"><img src="https://img.shields.io/badge/⬇%20XDELTA%20%ED%8C%A8%EC%B9%98-2.10GB-eab308?style=for-the-badge&logo=github&logoColor=white" alt="Download xdelta patch" /></a>
 
 </div>
 
@@ -47,20 +47,20 @@
 
 ### 최신 정식 배포판
 
-→ [Grandia III 한국어 패치 v1.0.0 Release](https://github.com/Jungsik-won/Grandia3-Translate/releases/tag/v1.0.0)
+→ [Grandia III 한국어 패치 v1.1.0 Release](https://github.com/Jungsik-won/Grandia3-KR-Translate-Disc-1/releases/tag/v1.1.0)
 
 | 항목 | 값 |
 | --- | --- |
-| 버전 | `v1.0.0` |
+| 버전 | `v1.1.0` |
 | 형식 | `xdelta3 3.2.0 / VCDIFF + LZMA secondary` |
-| 패치 파일 | `Grandia3_KR_Disc1_v1.0.0_561630a8_full.xdelta` |
-| 패치 크기 | `2,096,423,995 bytes` |
-| 패치 SHA-256 | `ce12dab4d9d72bc1a46fd932490c3fd4d8474b09da00835e475cf048dc1d49bc` |
+| 패치 파일 | `Grandia3_KR_Disc1_v1.1.0_0a1ec442_full.xdelta` |
+| 패치 크기 | `2,095,896,419 bytes` |
+| 패치 SHA-256 | `9507203e585145d703d2763bd14088f531c7dec92e68e00c4bd168f4c8b6bb51` |
 | 결과 ISO 크기 | `4,598,890,496 bytes` |
-| 결과 ISO SHA-256 | `561630a8f914685e0c24f749f20f3773594bd5fbd2d54218a0bdf86cdcccef55` |
+| 결과 ISO SHA-256 | `0a1ec442452b36f49e27794c5de475872ba9a9742f0a68a90c503deace104839` |
 
-패치는 변경분만 담고 있으며 원본 또는 완성 ISO를 포함하지 않습니다. v1.0.0 결과 ISO는 원본과
-같은 크기입니다. 마지막 A28→v1.0.0 단계는 파일 배치와 sector/extent를 그대로 보존했으며,
+패치는 변경분만 담고 있으며 원본 또는 완성 ISO를 포함하지 않습니다. v1.1.0 결과 ISO는 원본과
+같은 크기입니다. v1.0.0→v1.1.0 단계에서도 모든 파일 extent를 그대로 보존했으며,
 CLEAN→누적판 계보에는 고정 용량 planner가 안전하게 배치한 기존 relocation 135개가 포함됩니다.
 
 ### 적용 방법
@@ -69,12 +69,18 @@ CLEAN→누적판 계보에는 고정 용량 planner가 안전하게 배치한 �
 2. LZMA를 지원하는 `xdelta3`를 설치합니다.
 3. macOS/Linux에서는 `apply_in_place_ko.sh`, Windows에서는 `apply_in_place_ko.ps1`를 실행합니다.
 4. 적용기는 원본·패치·결과 ISO의 크기와 SHA-256을 자동으로 확인합니다.
-5. 원본은 보존되고 별도의 `Grandia3_KR_Disc1_v1.0.0.iso`가 생성됩니다.
+5. 원본은 보존되고 별도의 `Grandia3_KR_Disc1_v1.1.0.iso`가 생성됩니다.
 
 자세한 명령과 체크섬은 Release의 `README_ko.md`와 `SHA256SUMS.txt`를 확인하세요. 결과 ISO가
 4GB를 넘으므로 FAT32에는 저장할 수 없으며, 약 5GB 이상의 추가 여유 공간이 필요합니다.
 
-### v1.0.0 주요 반영 범위
+### v1.1.0 주요 반영 범위
+
+- 필드 이동 튜토리얼의 검색 버튼 빈칸을 `□` 아이콘으로 수정
+- GRM10 영상 자막 17개를 음성 기준으로 전체 재동기화하고 원본 음성 보존
+- v1.0.0의 누적 시스템·아이템·전투·시나리오·카지노·비행·렌더링 이벤트 자막 유지
+
+### v1.0.0 누적 반영 범위
 
 - 누적 시스템·상태·아이템·전투·시나리오 한국어화
 - 필드/마을 아이템 입수 이름과 용량 초과 메시지 교정
@@ -89,9 +95,9 @@ CLEAN→누적판 계보에는 고정 용량 planner가 안전하게 배치한 �
 ### 검증 상태와 실행 주의사항
 
 정확한 CLEAN 원본에서 xdelta를 역적용해 목표 ISO의 SHA-256과 전체 byte 비교가 일치함을
-확인했습니다. ISO9660/UDF 역추출, 독립 7-Zip 역추출, 핵심 파일 상속, GRM20 원본 음성 보존도
-검증했습니다. 누적 기능은 개발 과정에서 반복 실기 확인했으나, v1.0.0에서 마지막으로 합친
-세 변경의 장면별 최종 런타임 확인은 아직 완료되지 않았습니다.
+확인했습니다. ISO9660/UDF 역추출, 독립 7-Zip 역추출, 핵심 파일 상속, GRM10 원본 음성 보존도
+검증했습니다. 누적 기능은 개발 과정에서 반복 실기 확인했으나, v1.1.0의 검색 버튼과 GRM10
+재동기화 조합은 정적 검증 완료 후 사용자 실기 확인 대기 상태입니다.
 
 처음 실행할 때는 PCSX2를 완전히 종료하고 새 ISO로 cold boot하세요. 구 ISO에서 만든 상태저장은
 사용하지 말고 일반 메모리카드 저장을 불러온 뒤 새 상태저장을 만드세요.
@@ -128,11 +134,11 @@ development builds and public `v0.1.x-test` releases.
 
 - Source: `Grandia III (Japan) (Disc 1)`, `4,598,890,496 bytes`
 - Source SHA-256: `c588a7dada3bf7175bfe97b238b0ab4c77df6401a58d766829aec9d92f3596e8`
-- Patch: `Grandia3_KR_Disc1_v1.0.0_561630a8_full.xdelta`, `2,096,423,995 bytes`
-- Patch SHA-256: `ce12dab4d9d72bc1a46fd932490c3fd4d8474b09da00835e475cf048dc1d49bc`
-- Output SHA-256: `561630a8f914685e0c24f749f20f3773594bd5fbd2d54218a0bdf86cdcccef55`
+- Patch: `Grandia3_KR_Disc1_v1.1.0_0a1ec442_full.xdelta`, `2,095,896,419 bytes`
+- Patch SHA-256: `9507203e585145d703d2763bd14088f531c7dec92e68e00c4bd168f4c8b6bb51`
+- Output SHA-256: `0a1ec442452b36f49e27794c5de475872ba9a9742f0a68a90c503deace104839`
 
-→ [Open the v1.0.0 Release](https://github.com/Jungsik-won/Grandia3-Translate/releases/tag/v1.0.0)
+→ [Open the v1.1.0 Release](https://github.com/Jungsik-won/Grandia3-KR-Translate-Disc-1/releases/tag/v1.1.0)
 
 The release contains only an xdelta difference patch, hash-checking application scripts, documentation, and
 checksums. It does not contain an original or patched ISO or extracted game assets. The installers
@@ -151,11 +157,11 @@ Grandia3-Translate は、PlayStation 2版『グランディアIII』日本版を
 
 - 元ISO: `Grandia III (Japan) (Disc 1)`、`4,598,890,496 bytes`
 - 元ISO SHA-256: `c588a7dada3bf7175bfe97b238b0ab4c77df6401a58d766829aec9d92f3596e8`
-- パッチ: `Grandia3_KR_Disc1_v1.0.0_561630a8_full.xdelta`、`2,096,423,995 bytes`
-- パッチ SHA-256: `ce12dab4d9d72bc1a46fd932490c3fd4d8474b09da00835e475cf048dc1d49bc`
-- 出力 SHA-256: `561630a8f914685e0c24f749f20f3773594bd5fbd2d54218a0bdf86cdcccef55`
+- パッチ: `Grandia3_KR_Disc1_v1.1.0_0a1ec442_full.xdelta`、`2,095,896,419 bytes`
+- パッチ SHA-256: `9507203e585145d703d2763bd14088f531c7dec92e68e00c4bd168f4c8b6bb51`
+- 出力 SHA-256: `0a1ec442452b36f49e27794c5de475872ba9a9742f0a68a90c503deace104839`
 
-→ [v1.0.0 Releaseを開く](https://github.com/Jungsik-won/Grandia3-Translate/releases/tag/v1.0.0)
+→ [v1.1.0 Releaseを開く](https://github.com/Jungsik-won/Grandia3-KR-Translate-Disc-1/releases/tag/v1.1.0)
 
 配布物にはxdelta差分パッチ、適用スクリプト、説明書、チェックサムのみが含まれます。元ISO、
 パッチ済みISO、抽出したゲーム素材は含まれません。適用スクリプトは元ISOを保持し、元ISO・
@@ -163,6 +169,6 @@ Grandia3-Translate は、PlayStation 2版『グランディアIII』日本版を
 
 <div align="center">
 
-<sub>Grandia3-Translate · v1.0.0 · Korean fan translation research project</sub>
+<sub>Grandia3-Translate · v1.1.0 · Korean fan translation research project</sub>
 
 </div>
