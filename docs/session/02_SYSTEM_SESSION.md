@@ -13,6 +13,14 @@
 기타 고정 UI
 ```
 
+`FIELD.BIN`의 10개 필드 이름 고정 테이블은 `17_FIELD_ACTION_SESSION.md`가 소유한다. 시스템 세션은 동일 문구를 별도 ID로 다시 번역하거나 필드 이름 슬롯을 독자적으로 덮어쓰지 않는다.
+
+중앙 빌드에서는 시스템/상태 패치와 필드 이름 패치를 같은 CLEAN `FIELD.BIN`에 누적 병합해야 한다.
+
+전투 작전 설정창의 AI 설정값(`SYS_SETTINGS_0003`~`0009`)도 이 세션의
+`FIELD.BIN` 고정 슬롯 범위다. 전투 세션의 `BATTLE.BIN` 작전 표기와 함께
+중앙 사전검증에서 별도 sentinel로 확인한다.
+
 ## 기존 분석 우선
 
 Reference Pack의:
@@ -83,3 +91,25 @@ game_verified
 - 중앙 세션에 제출
 
 > **Workspace storage rule:** Treat `legacy/` as read-only reference/history. Do not create or modify active work products there. Save current work and generated outputs under the project root, such as `build/`, `data/`, `exports/`, or `tools/`.
+
+## 2026-08-27 Result 화면 확정 문자열
+
+Result 화면의 다음 9개 항목은 `FIELD.BIN` 고정 문자열로 확정했다.
+
+```text
+所持金=소지금
+攻撃=공격
+魔力=마력
+防御=방어
+抵抗=저항
+エキスパートステータス=상세 능력치
+マジックレベル=마법 레벨
+スキルレベル=스킬 레벨
+スペシャルレベル=필살기 레벨
+```
+
+정본 매니페스트는 `data/system/result_screen_field_strings_ko.json`, 별도 정적 후보는
+`build/central-runtime-cumulative-v30-result-screen/FIELD.BIN`이다. 사용자 승인으로
+다음 통합 테스트 ISO에는 이 후보를 필수 포함한다. 런타임 확인은 최종 배포판 승격
+게이트로 유지한다. `mHP/mMP`, `入手経験値`, `入手金`, 큰 `RESULT` 제목은 위치 미확정
+보류 항목이다.

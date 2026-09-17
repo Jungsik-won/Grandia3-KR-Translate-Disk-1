@@ -773,6 +773,7 @@ def build_container_and_renderer(
         "marker": marker,
         "line_buffer_va": line_buffer_va,
         "renderer_backend": renderer_backend,
+        "timer_policy": "MATCHED_REQUEST_PROGRESS_PLUS_EVENT_BIAS",
         "support": support,
         "helpers": helpers,
         "cave_bytes": cave_bytes,

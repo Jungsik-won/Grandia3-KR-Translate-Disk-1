@@ -9,8 +9,14 @@
 상태/장비
 아이템
 스킬/마법
+특기 효과
+캐릭터 이름
 전투
+전투 연출 도움말
+적 이름
+필드 이름/액션
 시나리오
+NPC 대사
 기타
 ```
 
@@ -42,7 +48,11 @@ CSV import/export도 지원한다.
 아이템
 스킬/마법
 전투
+전투 연출 도움말
+적 이름
+필드 이름/액션
 시나리오
+NPC 대사
 기타
 전체검색
 ```
@@ -84,8 +94,14 @@ STATUS_PARAM_0003
 ITEM_0107_NAME
 ITEM_0107_DESC
 SKILL_0034_NAME
+SKILL_0034_EFFECT_1
+CHARACTER_0001_NAME
 BATTLE_CMD_0012
+BATTLE_HELP_0001
+ENEMY_0131_NAME
+FIELD_NAME_0001
 SCN_D0123_0042
+NPC_D1_00030000_0001
 ```
 
 물리적 위치는 별도 metadata로 보존한다.
@@ -244,6 +260,37 @@ korean_required_glyphs.csv
 
 ## 빌드 연계
 
+빌드 입력 category에는 `SKILL_EFFECT`, `CHARACTER`, `ENEMY`, `FIELD`, `FIELD_RUNTIME`, `BATTLE_HELP`, `NPC_DIALOGUE`를 반드시 포함한다. 다음 CSV가 import되지 않았으면 통합 ISO 준비 상태를 표시하지 않는다.
+
+```text
+exports/enemy_names_standard.csv
+exports/special_skill_effects_standard.csv
+exports/character_names_standard.csv
+exports/field_names_standard.csv
+exports/common_field_names_standard.csv
+exports/battle_presentation_help_standard.csv
+exports/npc_dialogue_standard.csv       # 원문·구조 기준본
+exports/npc_dialogue_standard_ko.csv    # 중앙 검증 완료 번역 후보
+```
+
+NPC import 시 두 파일의 ID 순서와 보호 메타데이터를 먼저 대조한다. 번역 탭에는
+`npc_dialogue_standard_ko.csv`의 `kr_text`와 상태를 사용하되, source/offset/opcode/
+control metadata는 원문 기준본과 불일치하면 import를 중단한다. 번역 후보에
+`UNASSIGNED`가 남아 있으면 번역 완료 통계와 별개로 ISO 준비 상태를 차단한다.
+미해결 `<Gxxxx>`는 encoder가 원래 logical glyph index로 재출력하고 해당 슬롯을
+통합 폰트 보호 목록에 포함한 경우에만 보존형 입력으로 허용한다. 이 경우 의미
+판독 미완료는 별도 검수 상태로 남기며, 임의 문자로 대치하지 않는다.
+
+glyph 집계에도 `enemy_names_required_glyphs.txt`, `field_names_required_glyphs.txt`, `common_field_names_required_glyphs.txt`, `battle_presentation_help_required_glyphs.txt`, `npc_dialogue_required_glyphs.txt`를 포함한다. 삽입 대상 행에 `kr_encoded_hex=UNASSIGNED`가 남아 있으면 빌드를 중단한다. `NPC_DIALOGUE` 탭은 기존 시나리오 탭과 분리하며, 전체 원문 모집단·번역·화자명·안전 삽입 검증 중 하나라도 미완료면 ISO 준비 상태를 표시하지 않는다.
+
+2026-08-24 중앙 기준선은 `translation.db` 19,759행, `NPC_DIALOGUE` 11,637행,
+통합 요구 글자 1,268자, 고정 font population 2,224이다. DB 등록과 폰트 정적
+역추출은 완료됐지만 NPC 길이 가변 스크립트의 relocation 및 실기 검증은 별도
+게이트로 유지한다. 정적 기준 보고서는
+`reports/central_font_system_finalization_20260824.json`이다.
+
+여러 category가 동일한 `FIELD.BIN` 또는 `GR3.MDT`를 수정할 경우 category별 바이너리 산출물을 차례로 교체하지 않는다. 중앙 빌드 플랜이 CLEAN 기준본에 모든 논리 패치를 누적한 뒤 단일 파일을 생성해야 한다.
+
 최종적으로:
 
 ```text
@@ -255,6 +302,8 @@ translation.db
 → ISO 대상 파일 replace
 → reverse extraction verify
 ```
+
+역추출 검증에는 적 이름 레코드 169행, `FIELD.BIN` 필드 이름 고정 슬롯 10개, `DATA/30000000.MDZ` 런타임 필드명 directory 12개, 전투 연출 도움말 전체 확정 레코드의 ID·offset·encoded bytes와 제어코드 확인을 포함한다. 시나리오 5,903행과 NPC 일반대사 전체 모집단은 서로 독립 ID로 검증하고, 내부 member descriptor 및 스크립트 참조 relocation까지 확인한다. ISO 파일 생성은 사용자의 최종 승인 뒤에만 실행한다.
 
 까지 자동화할 수 있게 설계한다.
 

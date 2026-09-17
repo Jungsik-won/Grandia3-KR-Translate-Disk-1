@@ -117,8 +117,15 @@ system session   → exports/system_standard.csv
 status session   → exports/status_standard.csv
 item session     → exports/items_standard.csv
 battle session   → exports/battle_standard.csv
+battle-help session → exports/battle_presentation_help_standard.csv
+enemy session    → exports/enemy_names_standard.csv
+field session    → exports/field_names_standard.csv / exports/field_action_inventory.csv
 scenario session → exports/scenario_standard.csv
 ```
+
+필드·전투 연출 도움말 등 전담 세션이 별도 worktree에서 생성한 CSV·문서·재현 도구는 중앙 작업공간에 병합된 뒤에만 통합 ISO 입력으로 인정한다. worktree의 임시 절대경로를 빌드 스크립트의 영구 입력으로 고정하지 않는다.
+
+적 이름과 전투 연출 도움말은 `GR3.MDT`, 필드 이름은 `FIELD.BIN`의 다른 세션 변경과 충돌할 수 있다. 바이너리 결과물을 세션 간 복사해 덮어쓰지 말고, 중앙 세션이 번역 CSV와 패치 명세를 CLEAN 기준본에 다시 적용한다.
 
 다음 중앙 파일은 여러 세션이 동시에 직접 수정하지 않는다.
 

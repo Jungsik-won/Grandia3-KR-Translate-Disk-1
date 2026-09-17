@@ -9,13 +9,16 @@ that mapping.
 from __future__ import annotations
 
 import csv
+import argparse
 import re
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 LEGACY = ROOT / "legacy" / "case1"
+DATA = ROOT / "data"
 EXPORTS = ROOT / "exports"
+MDT_PATH: Path | None = None
 
 COMMON_FIELDS = [
     "id",
@@ -44,11 +47,11 @@ COMMON_FIELDS = [
 COMMAND_KR = {
     0: "콤보",
     1: "방어·회피",
-    2: "UNTRANSLATED",
+    2: "퇴각",
     3: "작전",
     4: "도구",
     5: "크리티컬",
-    6: "무기 사용",
+    6: "무기사용",
     7: "마법",
     8: "필살기",
     9: "오브",
@@ -60,7 +63,7 @@ BATTLE_KR = {
     "防御・回避": "방어·회피",
     "道具": "도구",
     "クリティカル": "크리티컬",
-    "武器使用": "무기 사용",
+    "武器使用": "무기사용",
     "魔法": "마법",
     "必殺技": "필살기",
     "オーブ": "오브",
@@ -69,23 +72,41 @@ BATTLE_KR = {
     "攻撃": "공격",
     "回復": "회복",
     "強化": "강화",
+    "補助": "보조",
     "敵": "적",
     "味方": "아군",
     "自分": "자신",
     "単体": "단일",
+    "円形": "원형",
+    "直線": "직선",
+    "扇形": "호형",
     "全体": "전체",
     "周囲": "주변",
-    "道具がありません": "도구가 없습니다",
-    "魔法がありません": "마법이 없습니다",
-    "技を<77F4>得してません": "기술을 습득하지 않았습니다",
+    "道具がありません": "도구 없음",
+    "魔法がありません": "마법 없음",
+    "技を<77F4>得してません": "기술 미습득",
     "マニュアル": "수동",
-    "プレイヤーが<3AF5>接コマンド入力をします": "플레이어가 직접 명령을 입력합니다",
-    "コンボとクリティカルのみを使用して": "콤보와 크리티컬만 사용하여",
-    "敵にダメージを与える攻撃型の作戦です": "적에게 피해를 주는 공격형 작전입니다",
-    "戦闘の状<B1F3>や敵の強さに合わせて": "전투 상황과 적의 강도에 맞춰",
-    "行動を変化させる万能型の作戦です": "행동을 바꾸는 만능형 작전입니다",
-    "の神髄を極めた": "의 진수를 터득한",
-    "は壊れた": "가 부서졌다",
+    "プレイヤーが<3AF5>接コマンド入力をします": "플레이어 직접 입력",
+    "コンボとクリティカルのみを使用して": "콤보·크리티컬만",
+    "敵にダメージを与える攻撃型の作戦です": "공격형 작전",
+    "戦闘の状<B1F3>や敵の強さに合わせて": "상황 대응",
+    "行動を変化させる万能型の作戦です": "만능형 작전",
+    "設定": "설정",
+    "全員": "전원",
+    "AI行動を使用せずに": "AI 미사용",
+    "選択した作戦を実行します": "선택한 작전 실행",
+    "を習得！！": "습득!!",
+    "の秘訣を得た": "비결 습득",
+    "の神髄を極めた": "진수 터득",
+    "は壊れた": "파손",
+    "バーサークが発動！": "광폭화!",
+    "逃走成功": "도주성공",
+    "逃走失敗": "도주실패",
+    "オートキャンセル！": "오토캔슬!",
+    "敵に囲まれた！！": "포위됐다!!",
+    "先制攻撃！！": "선제공격!!",
+    "奇襲をうけた！！": "기습당했다!!",
+    "不意をついた！！": "선수쳤다!!",
 }
 
 
@@ -113,7 +134,11 @@ SKILL_KR = {
     17: ("충파", "기합을 담은 우렁찬 포효를 내지른다"),
     18: ("열혈마구", "타오르는 화구를 크게 도약해 내던진다"),
     19: ("대회전", "고속 회전을 거듭하며 적에게 몸통박치기한다"),
-    20: ("마법사", "마력이 실체화되는 위력적인 술법"),
+    # 原名 影法師 (official English: Shadow Warrior).  Raw 0x35F2 is 影;
+    # the same glyph is independently decoded inside 邪影弾.  Keep the Korean
+    # display name within the original six-byte fixed slot so no later skill
+    # name or action address moves.
+    20: ("그림자분신", "실체화한 분신이 함께 공격한다"),
     21: ("열혈대마구", "거대한 폭탄을 온몸의 힘으로 내던진다"),
     22: ("홍련화", "홍련의 불꽃을 일으켜 적에게 던진다"),
     23: ("울 다이너마이트", "에너지를 폭발시켜 적에게 돌진한다"),
@@ -188,6 +213,18 @@ def controls(text: str) -> str:
     return "[" + ",".join(f'\"CUSTOM_CODE:{code}\"' for code in re.findall(r"<([0-9A-Fa-f]{4})>", text)) + "]"
 
 
+def raw_at(offset: str) -> str:
+    """Read a NUL-terminated GR3 string when an extracted MDT is supplied."""
+    if MDT_PATH is None:
+        return ""
+    data = MDT_PATH.read_bytes()
+    start = int(offset, 16)
+    end = data.find(b"\x00", start)
+    if end < 0:
+        raise ValueError(f"unterminated GR3 string at {offset}")
+    return data[start:end].hex(" ").upper()
+
+
 def row(**values: str) -> dict[str, str]:
     result = {field: "" for field in COMMON_FIELDS}
     result.update(values)
@@ -203,7 +240,7 @@ def build_commands() -> list[dict[str, str]]:
     result = []
     for item in source:
         index = int(item["command_index"])
-        unresolved = index == 2
+        unresolved = False
         result.append(row(
             id=f"BATTLE_CMD_{index + 1:04d}",
             category="BATTLE",
@@ -218,7 +255,7 @@ def build_commands() -> list[dict[str, str]]:
             control_codes=controls(item["decoded"]),
             status="UNTRANSLATED" if unresolved else "TRANSLATED",
             translator_note="명령 슬롯은 10바이트 고정 배열이다.",
-            review_note="슬롯 2는 원문 코드 47 F5 E8 F4의 의미가 미확정이므로 추측 번역하지 않음." if unresolved else "BATTLE_COMMAND_TABLE.csv confirmed.",
+            review_note="사용자 전투 UI 확인으로 원문 명령의 의미를 퇴각으로 확정." if index == 2 else "BATTLE_COMMAND_TABLE.csv confirmed.",
         ))
     return result
 
@@ -248,6 +285,17 @@ def build_battle_messages() -> list[dict[str, str]]:
     return result
 
 
+def build_battle_supplemental() -> list[dict[str, str]]:
+    """Load active discoveries omitted from the legacy battle inventory."""
+    source = read_csv(DATA / "battle" / "battle_ui_supplemental.csv")
+    result = []
+    for item in source:
+        values = {field: item.get(field, "") for field in COMMON_FIELDS}
+        values["kr_text"] = BATTLE_KR.get(item["jp_text"], item["kr_text"])
+        result.append(row(**values))
+    return result
+
+
 def build_skills() -> list[dict[str, str]]:
     source = read_csv(LEGACY / "data" / "skills" / "GR3_SPECIAL_SKILL_TABLE.csv")
     result = []
@@ -255,10 +303,16 @@ def build_skills() -> list[dict[str, str]]:
         index = int(item["skill_index"])
         name = item["name_jp"]
         desc = item["description_jp"]
+        if index == 20:
+            # 0x35F2 is confirmed as 影 by the decoded enemy action 邪影弾.
+            name = name.replace("<35F2>", "影")
+            desc = desc.replace("<35F2>", "影")
         name_kr, desc_kr = SKILL_KR[index]
         review = "원문에 미해독 custom code 토큰이 있어 한국어 이름은 REVIEW_1 초안." if "<" in name else ""
         for suffix, sub_category, jp, kr, original, pointer in (
-            ("NAME", "special_name", name, name_kr, item["name_offset"], f"0x{int(item['action_variant0_offset'], 16) + 4:06X}"),
+            # The first dword of every 0x40-byte action record is the name
+            # pointer.  +0x04 is packed action metadata, not a pointer.
+            ("NAME", "special_name", name, name_kr, item["name_offset"], f"0x{int(item['action_variant0_offset'], 16):06X}"),
             ("DESC", "special_desc", desc, desc_kr, item["description_offset"], f"0x{int(item['descriptor_offset'], 16) + 4:06X}"),
         ):
             result.append(row(
@@ -271,6 +325,7 @@ def build_skills() -> list[dict[str, str]]:
                 string_index=str(index),
                 original_offset=hex_offset(original),
                 pointer_offset=pointer,
+                jp_raw_hex=raw_at(original),
                 jp_text=jp,
                 kr_text=kr,
                 control_codes=controls(jp),
@@ -305,7 +360,7 @@ def build_magic() -> list[dict[str, str]]:
                 string_index=str(ordinal - 1),
                 original_offset=hex_offset(original),
                 pointer_offset=pointer,
-                jp_raw_hex=item["name_hex"] if suffix == "NAME" else item["description_hex"],
+                jp_raw_hex=raw_at(original) or (item["name_hex"] if suffix == "NAME" else item["description_hex"]),
                 jp_text=jp,
                 kr_text=kr,
                 control_codes=controls(jp),
@@ -325,7 +380,21 @@ def validate(records: list[dict[str, str]]) -> None:
 
 
 def main() -> None:
-    records = build_commands() + build_battle_messages() + build_skills() + build_magic()
+    global MDT_PATH
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mdt", type=Path, help="optional extracted GR3.MDT for skill raw-byte metadata")
+    args = parser.parse_args()
+    if args.mdt:
+        MDT_PATH = args.mdt
+        if not MDT_PATH.is_file():
+            raise SystemExit(f"MDT not found: {MDT_PATH}")
+    records = (
+        build_commands()
+        + build_battle_messages()
+        + build_battle_supplemental()
+        + build_skills()
+        + build_magic()
+    )
     validate(records)
     EXPORTS.mkdir(parents=True, exist_ok=True)
     output_csv = EXPORTS / "battle_standard.csv"

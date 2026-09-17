@@ -31,6 +31,9 @@ CHUNK_ALIGNMENT = 0x80
 SCENARIO_CHUNK_TAG = 0x03810000
 SCENARIO_MARKER = b"ScnrScriptEmulator&Converter"
 MESSAGE_END = b"\x0d\xff\x00"
+# The canonical scenario table owns these two variants.  Other presentation
+# variants (0x12/0x32/0x42/...) are extracted by extract_npc_dialogue.py so the
+# two canonical populations never duplicate the same command.
 MESSAGE_HEADER_OPS = {0x02, 0x22}
 
 VERIFIED_RAW = bytes.fromhex(
@@ -229,6 +232,22 @@ def decode_stored_text(raw: bytes, glyphs: dict[int, str]) -> DecodeResult:
     offset = 0
     while offset < len(raw):
         byte = raw[offset]
+        # Scenario records use 13 FF xx as one opaque three-byte command.
+        # Treating 13 and xx as controls while decoding FF as a glyph corrupts
+        # both translation text and the byte stream on reinsertion.
+        if byte == 0x13 and offset + 2 < len(raw) and raw[offset + 1] == 0xFF:
+            control = raw[offset : offset + 3]
+            controls.append(
+                {
+                    "offset": offset,
+                    "raw_hex": control.hex(" "),
+                    "kind": "OPAQUE_13_FF",
+                    "argument": control[2],
+                }
+            )
+            output.append(f"<CTRL:{control.hex(' ').upper()}>")
+            offset += 3
+            continue
         if byte == 0x08:
             output.append("\n")
             controls.append({"offset": offset, "raw_hex": "08", "kind": "LINE_BREAK"})

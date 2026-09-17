@@ -15,6 +15,7 @@ import hashlib
 import json
 import shutil
 import struct
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -99,6 +100,20 @@ def copy_file(source_path: Path, destination, destination_offset: int) -> None:
     with source_path.open("rb") as source:
         while block := source.read(8 * 1024 * 1024):
             destination.write(block)
+
+
+def clone_iso(source: Path, output: Path) -> None:
+    """Prefer an APFS clone so diagnostic images do not consume a full disc."""
+    if output.exists():
+        output.unlink()
+    result = subprocess.run(
+        ["cp", "-c", str(source), str(output)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if result.returncode != 0:
+        shutil.copyfile(source, output)
 
 
 def update_volume_space_size(handle, sector_count: int) -> None:
@@ -439,7 +454,7 @@ def main() -> int:
         image_sectors = max(image_sectors, tail_sector)
 
     args.output_iso.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(args.source_iso, args.output_iso)
+    clone_iso(args.source_iso, args.output_iso)
     udf_updates: list[dict[str, object]] = []
     udf_partition_descriptors: list[int] = []
     with args.source_iso.open("rb") as source, args.output_iso.open("r+b") as handle:

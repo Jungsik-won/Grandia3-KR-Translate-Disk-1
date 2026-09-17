@@ -131,19 +131,19 @@ class EventSubtitleAtlasTests(unittest.TestCase):
             ("DATA/00030100.MDZ", "0x001FEA20"), resources)
         self.assertEqual(
             resources[("DATA/01010201.MDZ", "0x002135DC")]["event_ids"],
-            ["miranda_wakes_yuki_event_0054"],
+            ["miranda_wakes_yuki_event_0054", "garage_event_0055"],
         )
         self.assertEqual(
             resources[("DATA/01010201.MDZ", "0x002135DC")]["sample_ids"],
-            ["0x3EE"],
+            ["0x3EE", "0x3F0"],
         )
         self.assertEqual(
             resources[("DATA/01010201.MDZ", "0x00213550")]["event_ids"],
-            ["garage_event_0055"],
+            ["miranda_wakes_yuki_event_0054", "garage_event_0055"],
         )
         self.assertEqual(
             resources[("DATA/01010201.MDZ", "0x00213550")]["sample_ids"],
-            ["0x3F0"],
+            ["0x3EE", "0x3F0"],
         )
         self.assertEqual(
             resources[("DATA/00061100.MDZ", "0x002135DC")]["event_ids"],
@@ -174,6 +174,30 @@ class EventSubtitleAtlasTests(unittest.TestCase):
             with self.assertRaisesRegex(
                     ValueError, "transient display sample address"):
                 external_builder.build_container_and_renderer(manifest)
+
+    def test_external_container_accepts_explicit_active_display_mode(self) -> None:
+        payload = json.loads(
+            atlas_builder.EVENT_SUBTITLE_DATABASE_PATH.read_text(
+                encoding="utf-8"))
+        event = payload["events"][0]
+        event.pop("runtime_sample_address", None)
+        event.pop("runtime_sample_addresses", None)
+        event["runtime_sample_mode"] = "ACTIVE_DISPLAY"
+        event["runtime_trigger_sample_ids"] = list(event["gr3_sample_ids"])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manifest = Path(temp_dir) / "active-display-mode.json"
+            manifest.write_text(
+                json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            built = external_builder.build_container_and_renderer(manifest)
+        resources = built["helpers"]["resource_lookup_metadata"]
+        rows = [
+            row for row in resources
+            if row["resource_path"] == event["resource_path"]
+        ]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["runtime_sample_address"], "0x001FEA21")
+        self.assertLessEqual(
+            len(built["cave_bytes"]), atlas_builder.CAVE_CAPACITY)
 
     def test_game_dialogue_font_source_is_byte_exact_and_complete(self) -> None:
         built = external_builder.build_container_and_renderer(
@@ -397,14 +421,16 @@ class EventSubtitleAtlasTests(unittest.TestCase):
             record for record in ship_rows
             if "ship_moonlight_yuki_alfina_event_0077"
             in record["event_ids"]]
-        self.assertEqual(len(moonlight_rows), 1)
+        self.assertEqual(len(moonlight_rows), 2)
         self.assertTrue(all(
             {"0x444"}.issubset(set(record["sample_ids"]))
             for record in moonlight_rows))
-        slot10 = next(
+        slot10_rows = [
             record for record in metadata
-            if record["resource_path"] == "DATA/00241300.MDZ")
-        self.assertEqual(slot10["runtime_sample_address"], "0x002135DC")
+            if record["resource_path"] == "DATA/00241300.MDZ"]
+        self.assertEqual(
+            {record["runtime_sample_address"] for record in slot10_rows},
+            {"0x00213550", "0x002135DC"})
         ritual_rows = [
             record for record in metadata
             if record["resource_path"] == "DATA/01100101.MDZ"]
@@ -422,6 +448,11 @@ class EventSubtitleAtlasTests(unittest.TestCase):
             f"<{len(built['cave_bytes']) // 4}I", built["cave_bytes"]))
         self.assertIn(atlas_builder.ins_lw(20, 11, 12), cave_words)
         self.assertIn(atlas_builder.ins_addiu(11, 11, 16), cave_words)
+        self.assertIn(atlas_builder.ins_addu(21, 9, 0), cave_words)
+        self.assertIn(atlas_builder.ins_addu(23, 21, 9), cave_words)
+        self.assertEqual(
+            built["timer_policy"],
+            "MATCHED_REQUEST_PROGRESS_PLUS_EVENT_BIAS")
 
         dispatch_load: list[int] = []
         atlas_builder.load_word(

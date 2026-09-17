@@ -366,6 +366,18 @@ def load_event_subtitle_database_specs(
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("schema_version") != 1:
         raise ValueError("unsupported rendered-event subtitle database schema")
+    address_policy = str(payload.get("runtime_sample_address_policy", ""))
+    stable_sample_addresses: tuple[int, ...] = ()
+    if address_policy:
+        if address_policy != "ALL_STABLE_REQUEST_SLOTS_WITH_COMPLETION_GUARD":
+            raise ValueError(
+                f"unsupported runtime sample address policy: {address_policy}")
+        stable_sample_addresses = tuple(
+            parse_int(value)
+            for value in payload.get("stable_runtime_sample_addresses", []))
+        if stable_sample_addresses != (0x00213550, 0x002135DC):
+            raise ValueError(
+                "all-slot policy requires the two audited request sample addresses")
     events: list[dict[str, object]] = []
     seen_event_ids: set[str] = set()
     # A stream/sample ID is unique only inside one owning MDZ.  The external
@@ -386,19 +398,37 @@ def load_event_subtitle_database_specs(
             parse_int(value) for value in raw["runtime_trigger_sample_ids"])
         if not trigger_sample_ids or not set(trigger_sample_ids) <= set(gr3_sample_ids):
             raise ValueError(f"{event_id}: runtime triggers must be a non-empty GR3 sample subset")
-        raw_sample_addresses = raw.get("runtime_sample_addresses")
-        if raw_sample_addresses is None:
-            sample_addresses = (parse_int(
-                raw.get("runtime_sample_address", EVENT_STREAM_SAMPLE_VA)),)
+        sample_mode = str(raw.get("runtime_sample_mode", "")).upper()
+        if sample_mode and sample_mode != "ACTIVE_DISPLAY":
+            raise ValueError(f"{event_id}: unsupported runtime sample mode")
+        if sample_mode == "ACTIVE_DISPLAY":
+            # Bit 0 tags the dispatch row so the renderer uses the active
+            # display progress at +0x10 instead of a request-slot progress at
+            # +0x58. The renderer clears the tag before reading the sample.
+            sample_addresses = (EVENT_STREAM_SAMPLE_VA | 1,)
         else:
-            sample_addresses = tuple(
-                parse_int(value) for value in raw_sample_addresses)
-            if not sample_addresses:
+            raw_sample_addresses = raw.get("runtime_sample_addresses")
+            if raw_sample_addresses is None:
+                sample_addresses = (parse_int(
+                    raw.get("runtime_sample_address", EVENT_STREAM_SAMPLE_VA)),)
+            else:
+                sample_addresses = tuple(
+                    parse_int(value) for value in raw_sample_addresses)
+                if not sample_addresses:
+                    raise ValueError(
+                        f"{event_id}: runtime_sample_addresses must not be empty")
+                if len(set(sample_addresses)) != len(sample_addresses):
+                    raise ValueError(
+                        f"{event_id}: duplicate runtime sample addresses")
+            if EVENT_STREAM_SAMPLE_VA in sample_addresses:
                 raise ValueError(
-                    f"{event_id}: runtime_sample_addresses must not be empty")
-            if len(set(sample_addresses)) != len(sample_addresses):
+                    f"{event_id}: transient display sample address "
+                    f"0x{EVENT_STREAM_SAMPLE_VA:08X} is not a stable request slot")
+        if stable_sample_addresses and sample_mode != "ACTIVE_DISPLAY":
+            if not set(sample_addresses) <= set(stable_sample_addresses):
                 raise ValueError(
-                    f"{event_id}: duplicate runtime sample addresses")
+                    f"{event_id}: runtime sample address is outside stable slots")
+            sample_addresses = stable_sample_addresses
         stream_identity: object = (
             stream_key if resource_path is not None else (event_resource, stream_key))
         trigger_identities = {
@@ -429,6 +459,7 @@ def load_event_subtitle_database_specs(
             # request rotates between slots remain address-agnostic.
             "runtime_sample_address": sample_addresses[0],
             "runtime_sample_addresses": sample_addresses,
+            "runtime_sample_mode": sample_mode or "STABLE_REQUEST_SLOT",
             "timer_bias_ticks": parse_int(raw.get("timer_bias_ticks", 0)),
             "flags": parse_int(raw.get("flags", 0)),
             "cue_path": cue_path,
@@ -3883,7 +3914,23 @@ def build_atlas_subtitle_cave_words(
         words.extend((ins_lw(9, 8, 8), ins_lw(10, 11, 4)))
         branch("bne", 9, 10, "field_dispatch_next")
         words.extend((ins_lw(19, 11, 8), ins_lw(20, 11, 12),
-                      ins_lw(9, 20, 0x58), ins_addiu(10, 0, -1)))
+                      ins_andi(18, 20, 1), ins_subu(20, 20, 18)))
+        # A tagged source is the active display sample at 0x001FEA20. Its
+        # progress lives at +0x10; ordinary stable request sample fields keep
+        # using their audited +0x58 progress word.
+        branch("bne", 18, 0, "field_dispatch_active_display_progress")
+        words.append(ins_lw(9, 20, 0x58))
+        branch("beq", 0, 0, "field_dispatch_progress_ready")
+        label("field_dispatch_active_display_progress")
+        words.append(ins_lw(9, 20, 0x10))
+        label("field_dispatch_progress_ready")
+        # Preserve the matched request's authoritative playback position.
+        # GR3SUB.BIN may finish loading several seconds after the voice has
+        # started, so a private frame counter would permanently lag the audio
+        # by that load delay. s5 is saved by this hook and otherwise unused
+        # until cue selection.
+        words.append(ins_addu(21, 9, 0))
+        words.append(ins_addiu(10, 0, -1))
         # A completed request remains resident in its slot with progress
         # 0xFFFFFFFF. Skip it before sample lookup, otherwise the stale front
         # half can win over a live continuation in the other rotating slot.
@@ -4032,6 +4079,7 @@ def build_atlas_subtitle_cave_words(
     else:
         load_word(words, 8, lookup_va)
     words.extend((ins_lw(17, 8, 0), ins_lw(16, 8, 4)))
+    branch("beq", 17, 0, "timer_reset")
     label("sample_lookup")
     words.append(ins_lw(10, 16, 0))
     branch("beq", 9, 10, "sample_match")
@@ -4041,13 +4089,28 @@ def build_atlas_subtitle_cave_words(
     branch("beq", 0, 0, "timer_reset")
     label("sample_match")
     words.extend((ins_lw(22, 16, 4), ins_lw(10, 22, 0)))
-    load_word(words, 8, EVENT_STREAM_TIMER_VA)
-    words.append(ins_lw(11, 8, 0))
-    branch("beq", 11, 10, "timer_continuing")
-    words.extend((ins_sw(10, 8, 0), ins_lw(9, 22, 12), ins_sw(9, 8, 4)))
-    label("timer_continuing")
-    words.extend((ins_lw(9, 8, 4), ins_addiu(9, 9, 1), ins_sw(9, 8, 4),
-                  ins_addu(23, 9, 0), ins_lw(17, 22, 4), ins_lw(16, 22, 8)))
+    if field_dispatch_table_va is not None:
+        # External dispatch already validated the selected request row and
+        # retained its +0x58 progress in s5. Mirror that clock every frame so
+        # a delayed/retried GR3SUB load cannot shift every cue. Event bias is
+        # still supported as an additive signed tick offset.
+        load_word(words, 8, EVENT_STREAM_TIMER_VA)
+        words.extend((
+            ins_lw(9, 22, 12), ins_addu(23, 21, 9),
+            ins_sw(10, 8, 0), ins_sw(23, 8, 4),
+            ins_lw(17, 22, 4), ins_lw(16, 22, 8),
+        ))
+    else:
+        load_word(words, 8, EVENT_STREAM_TIMER_VA)
+        words.append(ins_lw(11, 8, 0))
+        branch("beq", 11, 10, "timer_continuing")
+        words.extend((
+            ins_sw(10, 8, 0), ins_lw(9, 22, 12), ins_sw(9, 8, 4)))
+        label("timer_continuing")
+        words.extend((
+            ins_lw(9, 8, 4), ins_addiu(9, 9, 1), ins_sw(9, 8, 4),
+            ins_addu(23, 9, 0), ins_lw(17, 22, 4), ins_lw(16, 22, 8)))
+    branch("beq", 17, 0, "timer_reset")
 
     label("cue_loop")
     words.extend((ins_lw(8, 16, 0), ins_sltu(9, 23, 8)))
@@ -4458,6 +4521,9 @@ def build_multi_resource_atlas_subtitle_cave_words(
     load_word(words, 8, EVENT_STREAM_SAMPLE_VA)
     words.append(ins_lw(9, 8, 0))
     words.extend((ins_addu(8, 23, 0), ins_lw(17, 8, 0), ins_lw(16, 8, 4)))
+    # A damaged or not-yet-complete package must not underflow the loop count
+    # to 0xFFFFFFFF and stall the frame. Treat an empty sample table as a miss.
+    branch("beq", 17, 0, "timer_reset")
     label("sample_lookup")
     words.append(ins_lw(10, 16, 0))
     branch("beq", 9, 10, "sample_match")
@@ -4474,6 +4540,8 @@ def build_multi_resource_atlas_subtitle_cave_words(
     label("timer_continuing")
     words.extend((ins_lw(9, 8, 4), ins_addiu(9, 9, 1), ins_sw(9, 8, 4),
                   ins_addu(23, 9, 0), ins_lw(17, 22, 4), ins_lw(16, 22, 8)))
+    # Apply the same guard to a malformed empty cue table.
+    branch("beq", 17, 0, "timer_reset")
 
     label("cue_loop")
     words.extend((ins_lw(8, 16, 0), ins_sltu(9, 23, 8)))
@@ -4574,6 +4642,7 @@ def build_mdz_locator_atlas_subtitle_cave_words(
     expanded_marker_word: int,
     retry_window_frames: int = 0x100,
     retry_interval_mask: int = 0x0F,
+    runtime_sample_pointer_va: int | None = None,
 ) -> list[int]:
     """Find and render the package carried by the currently loaded MDZ.
 
@@ -4713,9 +4782,17 @@ def build_mdz_locator_atlas_subtitle_cave_words(
     load_word(words, 10, expanded_marker_word)
     branch("bne", 9, 10, "skip")
 
-    load_word(words, 8, EVENT_STREAM_SAMPLE_VA)
+    if runtime_sample_pointer_va is None:
+        load_word(words, 8, EVENT_STREAM_SAMPLE_VA)
+    else:
+        # A small SLPM router may choose the active-display sample or a stable
+        # request slot without duplicating the near-capacity local renderer.
+        # The pointer is refreshed before every frame-hook invocation.
+        load_word(words, 8, runtime_sample_pointer_va)
+        words.append(ins_lw(8, 8, 0))
     words.append(ins_lw(9, 8, 0))
     words.extend((ins_addu(8, 23, 0), ins_lw(17, 8, 0), ins_lw(16, 8, 4)))
+    branch("beq", 17, 0, "timer_reset")
     label("sample_lookup")
     words.append(ins_lw(10, 16, 0))
     branch("beq", 9, 10, "sample_match")
@@ -4732,6 +4809,7 @@ def build_mdz_locator_atlas_subtitle_cave_words(
     label("timer_continuing")
     words.extend((ins_lw(9, 8, 4), ins_addiu(9, 9, 1), ins_sw(9, 8, 4),
                   ins_addu(23, 9, 0), ins_lw(17, 22, 4), ins_lw(16, 22, 8)))
+    branch("beq", 17, 0, "timer_reset")
 
     label("cue_loop")
     words.extend((ins_lw(8, 16, 0), ins_sltu(9, 23, 8)))

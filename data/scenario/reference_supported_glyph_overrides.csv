@@ -7,7 +7,7 @@ glyph_index_hex,character,confidence,evidence_kind,evidence_note
 002F,」,SUPPORTED,dialogue_context,"Closing quote after スキル/ライフアップ/行けッ"
 0054,ぁ,SUPPORTED,dialogue_context,"Small-vowel speech style: なぁ/まぁ/いやぁ/さぁ"
 005A,ぇ,SUPPORTED,dialogue_context,"Small-vowel speech style: すげぇ/ちぇっ/ねぇ"
-006F,よ,SUPPORTED,dialogue_context,"Sentence-ending よ: そんな…じゃないよ/考えるよ/感じるよ"
+006F,ぜ,SUPPORTED,dialogue_context,"Visually verified as ぜ; sentence-ending ぜ and repeated ぜんぜん fit the raw-byte contexts"
 0083,ぱ,SUPPORTED,dialogue_context,"やっぱり and やっぱ"
 0113,会,SUPPORTED,dialogue_context,"会おう/会うわけない/会ったら"
 0114,話,SUPPORTED,dialogue_context,"Compound 話: そんな話/その話/子供の頃よく世話"

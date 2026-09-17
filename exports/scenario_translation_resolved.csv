@@ -1277,7 +1277,7 @@ SCN_00215100_00740000_0007,SCENARIO,scenario_message,DATA/00215100.MDZ,DATA/0021
 どうやってだ？","오~!
 어떻게 하는데?",UNASSIGNED,ユウキ,"[{""offset"":-5,""raw_hex"":""02 0e 00 0b 00"",""kind"":""MESSAGE_HEADER"",""opcode"":2,""argument"":11},{""offset"":3,""raw_hex"":""08"",""kind"":""LINE_BREAK""},{""offset"":11,""raw_hex"":""0d ff 00"",""kind"":""MESSAGE_END""}]",REVIEW_1,NO,CHARACTER_GUIDE v0.1 적용. 완전 복원 원문 1차 번역.,SUPPORTED: structured scenario command; header FACE slot maps to face_yuuki_12; runtime display not yet checked. PROVEN: byte-identical source command exists at the same path and offsets on Disc 2. TERM: 버스피어·파스·도박장 채택; 바 스피어는 대안 표기로 보류.
 SCN_00215100_00740000_0021,SCENARIO,scenario_message,DATA/00215100.MDZ,DATA/00215100.MDT,0x00740000,00215100,20,0x00257c56,0x00257c51,90 be 99 21 f0 d1 3b f0 b6 3b f0 26 f0 3c f0 ea 99 a1 08 ca e4 d2 a3 f1 d4 f4 7f 99 80 bd a0 7e 43 0d ff 00,"それでバクラやラフリドでは
-エッグ合成ができるのか！","그래서 바쿨라와 라플리드에서는
+エッグ合成ができるのか！","그래서 바쿠라와 라플리드에서는
 에그 합성이 가능한 거구나!",UNASSIGNED,ユウキ,"[{""offset"":-5,""raw_hex"":""02 0e 00 02 00"",""kind"":""MESSAGE_HEADER"",""opcode"":2,""argument"":2},{""offset"":18,""raw_hex"":""08"",""kind"":""LINE_BREAK""},{""offset"":33,""raw_hex"":""0d ff 00"",""kind"":""MESSAGE_END""}]",REVIEW_1,NO,CHARACTER_GUIDE v0.1 적용. 완전 복원 원문 1차 번역.,SUPPORTED: structured scenario command; header FACE slot maps to face_yuuki_03; runtime display not yet checked. PROVEN: byte-identical source command exists at the same path and offsets on Disc 2. TERM: 버스피어·파스·도박장 채택; 바 스피어는 대안 표기로 보류.
 SCN_00215200_00740000_0001,SCENARIO,scenario_message,DATA/00215200.MDZ,DATA/00215200.MDT,0x00740000,00215200,0,0x00250774,0x0025076f,5f f0 d6 f0 c1 8c bd 08 dd 47 27 f0 c1 8c bd 08 b6 b3 bd 0d ff 00,"回復をする
 セーブをする

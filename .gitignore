@@ -5,12 +5,24 @@
 /extracted/
 /dump/
 /pcsx2_dumps/
+/MOVIE/
+/audio/corpus/
+/audio/extracted/
+/exports/unresolved_glyph_images/
+/Grandia3_Texture_Hunter_GUI_v1/texture_hunt/
 
 *.iso
 *.bin
 *.mdz
 *.mdt
 *.dat
+*.MOV
+*.mov
+*.mpeg
+*.mp4
+*.flac
+*.wav
+*.psd
 
 # Build / temporary output
 /build/
@@ -32,6 +44,8 @@ venv/
 
 # Local filesystem metadata
 .DS_Store
+/JIN.png
+/SYS_GR3*.png
 
 # Bundled third-party font repository with its own Git history
 /legacy/

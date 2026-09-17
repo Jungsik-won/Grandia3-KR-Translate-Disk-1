@@ -58,8 +58,11 @@ def slot_lists(value: Any) -> Iterable[list[dict[str, Any]]]:
             yield slots
 
 
-def registered_slots(event: dict[str, Any]) -> list[int]:
-    values = event.get("runtime_sample_addresses")
+def registered_slots(
+    event: dict[str, Any],
+    policy_addresses: list[Any] | None = None,
+) -> list[int]:
+    values = policy_addresses or event.get("runtime_sample_addresses")
     if values is None:
         values = [event.get("runtime_sample_address")]
     slots: set[int] = set()
@@ -100,6 +103,12 @@ def main() -> int:
 
     manifest = json.loads(args.manifest.read_text(encoding="utf-8-sig"))
     events = manifest["events"]
+    policy = str(manifest.get("runtime_sample_address_policy", ""))
+    policy_addresses = (
+        list(manifest.get("stable_runtime_sample_addresses", []))
+        if policy == "ALL_STABLE_REQUEST_SLOTS_WITH_COMPLETION_GUARD"
+        else None
+    )
     by_id = {event["event_id"]: event for event in events}
     resources_by_id = {event_id: event_resources(event) for event_id, event in by_id.items()}
     samples_by_id = {event_id: event_samples(event) for event_id, event in by_id.items()}
@@ -157,7 +166,7 @@ def main() -> int:
     no_parsed_evidence = []
     for event in events:
         event_id = event["event_id"]
-        registered = registered_slots(event)
+        registered = registered_slots(event, policy_addresses)
         observed = sorted({item["slot_index"] for item in observations[event_id]})
         missing = sorted(set(observed) - set(registered))
         if not registered:
@@ -183,7 +192,9 @@ def main() -> int:
             "evidence": observations[event_id],
         })
 
-    dual_count = sum(len(registered_slots(event)) == 2 for event in events)
+    dual_count = sum(
+        len(registered_slots(event, policy_addresses)) == 2
+        for event in events)
     report = {
         "schema_version": 1,
         "manifest": str(args.manifest.resolve()),
@@ -204,9 +215,10 @@ def main() -> int:
         "no_parsed_slot_evidence_event_ids": no_parsed_evidence,
         "events": rows,
         "policy": (
-            "Do not duplicate every single-slot registration. In a resource with sequential "
-            "events, a stale request in the other slot can otherwise win dispatch. Add the "
-            "second slot only when runtime evidence proves slot rotation for that event."
+            "Every normal rendered event is expanded to both audited request slots. Runtime "
+            "evidence proves slot allocation rotates with playback history. The common "
+            "dispatcher skips completed rows whose progress is 0xFFFFFFFF before matching "
+            "the request sample, preventing an ended request from winning dispatch."
         ),
     }
     text = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
